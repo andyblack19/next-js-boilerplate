@@ -1,0 +1,37 @@
+name: Development
+
+on:
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - "**/README.md"
+jobs:
+  build-test:
+    name: Build, Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ vars.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test-ci
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: build
+  deploy:
+    name: Deploy
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: build
+      - run: npx wrangler pages publish build --branch=${{ github.event.number }} --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
